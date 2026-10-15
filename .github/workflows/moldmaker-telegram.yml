@@ -1,0 +1,70 @@
+# moldmaker-telegram.yml — the Moldmaker face on the Zero chassis.
+#
+# Triggered by repository_dispatch from the Telegram bridge worker.
+# Reroutes Zero's telegram flow: instead of "hear text -> brief reply",
+# the transmission is DEPOSITED (interpreted, validated, filed as a
+# Moldmaker deposit with a commentary commit), then a brief
+# acknowledgement goes back through the bridge.
+#
+# Fork notes: this workflow treats THIS repo as the Moldmaker engine.
+# Project stores live in subdirectories routed by MOLDMAKER_ROUTES
+# (chat_id -> subdir); the default project for this repo is "dogfood",
+# deliberately NOT the repo root, so enabling the workflow here can
+# never overwrite the design docs in docs/ and specs/.
+# Requires: vault registration for this repo (see VAULT pattern in
+# SuperInstance/zero-poc), TELEGRAM_BRIDGE_URL repo variable.
+
+name: moldmaker-telegram
+
+on:
+  repository_dispatch:
+    types: [moldmaker_telegram]
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  handle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Get OIDC token for vault
+        run: |
+          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vault" | jq -r '.value')
+          echo "OIDC_TOKEN=$OIDC_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Deposit the transmission
+        env:
+          VAULT_URL: ${{ vars.VAULT_URL }}
+          MOLDMAKER_DEFAULT_PROJECT: dogfood
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: |
+          printf '%s' "$PAYLOAD" > /tmp/payload.json
+          python3 src/handle_telegram.py --payload /tmp/payload.json --repo-root . \
+            > /tmp/result.json || true
+          cat /tmp/result.json
+          echo "ack=$(jq -r '.ack_text // "Filed."' /tmp/result.json)" >> "$GITHUB_ENV"
+          git config user.name "moldmaker"
+          git config user.email "moldmaker@local"
+          git push || true
+
+      - name: Reply via bridge
+        env:
+          TG_CHAT: ${{ github.event.client_payload.chat_id }}
+          TELEGRAM_BRIDGE_URL: ${{ vars.TELEGRAM_BRIDGE_URL }}
+        run: |
+          jq -n --argjson chat "$TG_CHAT" --arg text "$ack" \
+            '{chat_id: $chat, text: $text}' | \
+            curl -s -X POST ${TELEGRAM_BRIDGE_URL:-https://lobster-telegram-bridge.casey-digennaro.workers.dev}/send \
+              -H "Content-Type: application/json" -d @- | jq '{ok, error}' || true

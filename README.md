@@ -67,8 +67,14 @@ to crystallize.
 
 ## Status
 
-Design-stage. This repo is the spec set; per its own doctrine, the
-spec set comes first and anything built is downstream of it. The
-design itself was produced by the process it describes: a morning of
-voice-driven conversation, iterated between a human and an agent,
-distilled into these markdowns.
+**v0 core built and tested (2026-10-14); not yet deployed.**
+The spec set came first (2026-10-13, distilled from one morning of
+voice-driven conversation). The first build downstream of it now
+exists: `src/moldmaker.py` (deterministic deposit pipeline),
+`src/interpreter.py` (LLM half), `src/handle_telegram.py` (the
+Zero-chassis Telegram face), workflows, 12 acceptance tests, and a
+no-network `demo.py`. See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
+for what the reroute took from the Zero agent, what the fleet
+contributed, and — in the open — what v0 still does not do
+(no live bot routing yet, no native voice notes, no LLM
+completeness pass yet).

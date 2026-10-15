@@ -1,0 +1,1 @@
+Correction on the bilge thing: it's not the float switch sticking, the mechanic says the switch is fine, it's the wiring chafing where it passes the stringer. So the trust problem is the same but the cause is different.

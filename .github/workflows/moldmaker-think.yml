@@ -1,0 +1,63 @@
+# moldmaker-think.yml — the completeness pass (v0: honest subset).
+#
+# Zero's think heartbeat runs a freeform ReAct loop. Moldmaker's v0
+# think cycle is narrower and deterministic: regenerate the meeting
+# agenda + status from the deposits and commit them if they changed.
+# The LLM "what's missing?" pass over the spec set is the next rung
+# (docs/IMPLEMENTATION.md) — it is NOT faked here.
+#
+# Manual dispatch only. To make it a heartbeat, add:
+#   schedule:
+#     - cron: '*/30 * * * *'
+# under `on:` once a project store is live and the commit cadence is
+# wanted.
+
+name: moldmaker-think
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: 'Project store subdir (blank = dogfood)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  think:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Regenerate agenda + views
+        env:
+          PROJECT: ${{ inputs.project }}
+        run: |
+          STORE="${PROJECT:-dogfood}"
+          python3 - <<EOF
+          import sys
+          sys.path.insert(0, "src")
+          import moldmaker
+          store = "$STORE"
+          moldmaker.init_store(store, commit=False)
+          moldmaker.regenerate_views(store)
+          with open(f"{store}/specs/AGENDA.md", "w") as f:
+              f.write(moldmaker.render_agenda(store))
+          print(moldmaker.status(store))
+          EOF
+          git config user.name "moldmaker"
+          git config user.email "moldmaker@local"
+          git add -A
+          git diff --staged --quiet || git commit -m "think: agenda + views regenerated" \
+            -m "Commentary: deterministic v0 think pass. No LLM completeness pass yet — see docs/IMPLEMENTATION.md."
+          git push || true
