@@ -6,6 +6,7 @@ The matrix follows the adversarial review filed during the build
 approval gates, corrections, privacy (secrets), dirty-tree safety,
 partial failure = no partial commit.
 """
+import copy
 import json
 import os
 import subprocess
@@ -116,6 +117,31 @@ class DepositTests(unittest.TestCase):
             twin2 = json.load(f)
         a2 = next(x for x in twin2["actions"] if x["id"] == "action.sensor-options")
         self.assertEqual(a2["status"], "approved")
+
+    def test_action_owner_alias_normalized_and_unknown_coerced(self):
+        # Regression: fourth live dispatch (2026-10-14) lost the whole
+        # deposit because MiniMax called a software action's owner
+        # "software-agent" on every retry. Owner vocabulary is a routing
+        # hint, not a reason to refuse an otherwise traceable deposit.
+        aliased = copy.deepcopy(self.interp)
+        aliased["actions"][0]["owner"] = "software-agent"
+        clean, notes = moldmaker.validate_interpretation(self.raw, aliased)
+        self.assertEqual(clean["actions"][0]["owner"], "logic-agent")
+        self.assertTrue(any("normalized to 'logic-agent'" in n for n in notes))
+
+        unknown = copy.deepcopy(self.interp)
+        unknown["actions"][0]["owner"] = "martian-agent"
+        clean, notes = moldmaker.validate_interpretation(self.raw, unknown)
+        self.assertEqual(clean["actions"][0]["owner"], "unspecified")
+        self.assertTrue(any("coerced to 'unspecified'" in n for n in notes))
+
+        # And the aliased interpretation still files end to end, with the
+        # normalization visible in the twin rather than silently rewritten.
+        r = moldmaker.deposit(self.store, self.raw, aliased, external_id="msg-owner")
+        with open(os.path.join(self.store, "deposits", r["slug"] + ".a2a.json")) as f:
+            twin = json.load(f)
+        self.assertEqual(twin["actions"][0]["owner"], "logic-agent")
+        self.assertTrue(any("normalized" in n for n in twin["validation_notes"]))
 
     def test_secret_refused(self):
         with self.assertRaises(moldmaker.MoldmakerError):

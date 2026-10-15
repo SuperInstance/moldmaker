@@ -91,7 +91,10 @@ Rules:
   actions for the relevant agent, NOT questions for the user.
 - Questions for the user are a budget: include only questions whose answers
   would change the build.
-- Actions always have status "proposed". You cannot approve anything."""
+- Actions always have status "proposed". You cannot approve anything.
+- Action owners must be exactly one of the listed values. Software, code,
+  and application-development work belongs to "logic-agent"; do not invent
+  owner labels such as "software-agent"."""
 
 
 def build_prompt(raw, context="", feedback=""):

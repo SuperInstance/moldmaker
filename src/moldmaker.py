@@ -44,6 +44,16 @@ ANNOTATION_KINDS = {"note", "inference", "formalization", "context", "action", "
 ANNOTATION_BASES = {"said", "inferred", "context"}
 INTENT_STATUSES = {"draft", "proposed", "approved"}
 ACTION_OWNERS = {"logic-agent", "hardware-agent", "research-agent", "human", "unspecified"}
+# Owner labels are routing hints, not provenance or authorization. A model
+# may use an obvious synonym for a canonical owner; normalize it and record
+# the change rather than losing the whole transmission over vocabulary.
+ACTION_OWNER_ALIASES = {
+    "software-agent": "logic-agent",
+    "code-agent": "logic-agent",
+    "coding-agent": "logic-agent",
+    "development-agent": "logic-agent",
+    "engineering-agent": "logic-agent",
+}
 PRIORITIES = {"high", "normal", "low"}
 
 SECRET_PATTERNS = [
@@ -254,8 +264,21 @@ def validate_interpretation(raw, interp, approved_ids=frozenset()):
     clean_actions = []
     for a in actions:
         _check_quote(raw, a, f"action {a['id']}")
-        owner = a.get("owner", "unspecified")
-        _require(owner in ACTION_OWNERS, f"action {a['id']}: bad owner {owner!r}")
+        owner_raw = a.get("owner", "unspecified")
+        owner_key = (re.sub(r"[\s_]+", "-", owner_raw.strip().lower())
+                     if isinstance(owner_raw, str) else "")
+        if owner_key in ACTION_OWNER_ALIASES:
+            owner = ACTION_OWNER_ALIASES[owner_key]
+            notes.append(
+                f"action {a['id']}: owner {owner_raw!r} normalized to {owner!r}"
+            )
+        elif owner_key in ACTION_OWNERS:
+            owner = owner_key
+        else:
+            owner = "unspecified"
+            notes.append(
+                f"action {a['id']}: owner {owner_raw!r} coerced to 'unspecified'"
+            )
         status = a.get("status", "proposed")
         if status == "approved" and a["id"] not in approved_ids:
             status = "proposed"
