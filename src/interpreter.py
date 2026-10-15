@@ -121,10 +121,25 @@ def _post_json(url, payload, headers=None, timeout=120):
     req = urllib.request.Request(url, data=json.dumps(payload).encode(),
                                  method="POST")
     req.add_header("Content-Type", "application/json")
+    # Cloudflare's edge blocks Python-urllib's default user agent
+    # (error 1010, an edge 403 that looks exactly like an auth 403).
+    # The Zero agent's vault client learned this first; identify.
+    req.add_header("User-Agent", "moldmaker/0.1 (+https://github.com/SuperInstance/moldmaker)")
     for k, v in (headers or {}).items():
         req.add_header(k, v)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        # Surface the response body: the vault's error JSON names the
+        # exact claim it rejected, which turns a bare "403" into a
+        # diagnosis instead of a guessing game.
+        body = ""
+        try:
+            body = e.read().decode()[:400]
+        except Exception:
+            pass
+        raise RuntimeError(f"HTTP {e.code} from {url}: {body}") from e
 
 
 DEFAULT_VAULT_URL = "https://superinstance-vault.casey-digennaro.workers.dev"
