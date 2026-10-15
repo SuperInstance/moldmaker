@@ -127,8 +127,18 @@ def _post_json(url, payload, headers=None, timeout=120):
         return json.loads(resp.read().decode())
 
 
+DEFAULT_VAULT_URL = "https://superinstance-vault.casey-digennaro.workers.dev"
+
+
+def vault_base_url():
+    # An env var set to "" (e.g. a GitHub workflow expanding an unset
+    # repo variable) must fall back to the default, not become the URL.
+    # First live deployment failed exactly here: POST "/proxy".
+    return os.environ.get("VAULT_URL") or DEFAULT_VAULT_URL
+
+
 def interpret_vault(raw, context="", model=None, feedback=""):
-    vault_url = os.environ.get("VAULT_URL", "https://superinstance-vault.casey-digennaro.workers.dev")
+    vault_url = vault_base_url()
     oidc = os.environ.get("OIDC_TOKEN", "")
     if not oidc:
         raise RuntimeError("OIDC_TOKEN not set (vault provider needs it)")

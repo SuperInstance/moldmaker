@@ -168,6 +168,25 @@ class DepositTests(unittest.TestCase):
         self.assertEqual(name, "moldmaker")
 
 
+class InterpreterTests(unittest.TestCase):
+    def test_vault_url_empty_env_falls_back(self):
+        # Regression: second live dispatch (2026-10-14) failed with
+        # "unknown url type: '/proxy'" because the workflow expanded an
+        # unset repo variable to VAULT_URL="" and the code used it as-is.
+        import interpreter
+        old = os.environ.get("VAULT_URL")
+        os.environ["VAULT_URL"] = ""
+        try:
+            self.assertEqual(interpreter.vault_base_url(), interpreter.DEFAULT_VAULT_URL)
+            os.environ["VAULT_URL"] = "https://example.invalid/vault"
+            self.assertEqual(interpreter.vault_base_url(), "https://example.invalid/vault")
+        finally:
+            if old is None:
+                os.environ.pop("VAULT_URL", None)
+            else:
+                os.environ["VAULT_URL"] = old
+
+
 class HandlerTests(unittest.TestCase):
     def test_voice_without_transcript_needs_transcription(self):
         import handle_telegram
