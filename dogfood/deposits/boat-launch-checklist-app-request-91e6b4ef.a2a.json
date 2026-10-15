@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "deposit_id": "91e6b4ef86f55210",
+    "slug": "boat-launch-checklist-app-request-91e6b4ef",
+    "title": "Boat Launch Checklist App Request",
+    "source": "telegram",
+    "timestamp": "2026-10-15T08:10:45.510Z",
+    "external_id": "99006",
+    "audio_ref": null
+  },
+  "source": {
+    "raw": "Build me a simple checklist app for launching the boat. Before I leave the dock I need to check the bilge pump, fuel, lines, and weather. Whoever usually checks the fuel dock should be reminded, but I don't know who that is right now."
+  },
+  "sections": [
+    {
+      "heading": "App Requirements",
+      "source_quote": "Build me a simple checklist app for launching the boat.",
+      "span": null,
+      "annotations": [
+        {
+          "kind": "formalization",
+          "basis": "said",
+          "text": "Create a checklist application with the following items: bilge pump, fuel, lines, and weather.",
+          "confidence": 1.0,
+          "source_quote": null,
+          "source_ref": null
+        }
+      ]
+    },
+    {
+      "heading": "Pre-Departure Checklist Items",
+      "source_quote": "Before I leave the dock I need to check the bilge pump, fuel, lines, and weather.",
+      "span": null,
+      "annotations": [
+        {
+          "kind": "formalization",
+          "basis": "said",
+          "text": "The checklist should include the following items: bilge pump, fuel, lines, and weather.",
+          "confidence": 1.0,
+          "source_quote": null,
+          "source_ref": null
+        }
+      ]
+    },
+    {
+      "heading": "Fuel Dock Reminder",
+      "source_quote": "Whoever usually checks the fuel dock should be reminded, but I don't know who that is right now.",
+      "span": null,
+      "annotations": [
+        {
+          "kind": "note",
+          "basis": "said",
+          "text": "The app should include a reminder for the person responsible for checking the fuel dock, but the identity of this person is currently unknown.",
+          "confidence": 1.0,
+          "source_quote": null,
+          "source_ref": null
+        },
+        {
+          "kind": "context",
+          "basis": "inferred",
+          "text": "The identity of the person who checks the fuel dock is unresolved.",
+          "confidence": null,
+          "source_quote": null,
+          "source_ref": "transmission"
+        }
+      ]
+    }
+  ],
+  "intents": [
+    {
+      "id": "create.checklist.app",
+      "kind": "instruction",
+      "statement": "Create a simple checklist app for launching the boat with items: bilge pump, fuel, lines, and weather.",
+      "source_quote": "Build me a simple checklist app for launching the boat.",
+      "confidence": 1.0,
+      "status": "proposed"
+    },
+    {
+      "id": "include.fuel.dock.reminder",
+      "kind": "requirement",
+      "statement": "Include a reminder for the person responsible for checking the fuel dock.",
+      "source_quote": "Whoever usually checks the fuel dock should be reminded",
+      "confidence": 1.0,
+      "status": "proposed"
+    }
+  ],
+  "actions": [
+    {
+      "id": "develop.checklist.app",
+      "title": "Develop the boat launch checklist app with specified items",
+      "owner": "logic-agent",
+      "status": "proposed",
+      "source_quote": "Build me a simple checklist app for launching the boat.",
+      "confidence": 1.0
+    },
+    {
+      "id": "implement.fuel.dock.reminder",
+      "title": "Implement a reminder feature for the fuel dock checker",
+      "owner": "logic-agent",
+      "status": "proposed",
+      "source_quote": "Whoever usually checks the fuel dock should be reminded",
+      "confidence": 1.0
+    }
+  ],
+  "questions": [
+    {
+      "id": "identify.fuel.dock.checker",
+      "question": "Who is responsible for checking the fuel dock?",
+      "why": "To set up the reminder feature in the app",
+      "priority": "high",
+      "source_quote": "but I don't know who that is right now"
+    }
+  ],
+  "commentary": {
+    "tone": "direct and task-oriented",
+    "meaning": "The user is requesting a simple app to ensure all necessary checks are performed before launching the boat, with a specific focus on reminding the person responsible for checking the fuel dock.",
+    "salience": "The app requirements and checklist items are crucial for the app's functionality. The unresolved identity of the fuel dock checker is important for implementing the reminder feature.",
+    "connections": [
+      "boat launch procedures",
+      "checklist app development",
+      "reminder systems"
+    ]
+  },
+  "validation_notes": [],
+  "provenance_note": "Every intent/action/question traces to an exact source_quote (or span) of source.raw, validated at deposit time by src/moldmaker.py."
+}
