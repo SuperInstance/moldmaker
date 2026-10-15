@@ -105,6 +105,16 @@ def foreign_dirty_paths(store):
     return bad
 
 
+def ensure_identity(store):
+    """A deposit must be able to commit in any checkout — including a
+    fresh CI checkout with no git identity configured. Set a local
+    Moldmaker identity when (and only when) none exists."""
+    if not git(store, "config", "user.name", check=False).stdout.strip():
+        git(store, "config", "user.name", "moldmaker")
+    if not git(store, "config", "user.email", check=False).stdout.strip():
+        git(store, "config", "user.email", "moldmaker@local")
+
+
 def commit_count(store):
     out = git(store, "rev-list", "--count", "HEAD", check=False)
     return int(out.stdout.strip()) if out.returncode == 0 else 0
@@ -472,6 +482,7 @@ def deposit(store, raw, interp, source="text", timestamp=None, external_id=None,
 
     if commit:
         _require(is_git_repo(store), "store is not a git repo (run init first)")
+        ensure_identity(store)
         foreign = foreign_dirty_paths(store)
         _require(not foreign,
                  f"repo has uncommitted changes outside the store ({foreign[:3]}); "

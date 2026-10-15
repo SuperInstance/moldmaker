@@ -50,16 +50,19 @@ jobs:
           MOLDMAKER_DEFAULT_PROJECT: dogfood
           PAYLOAD: ${{ toJson(github.event.client_payload) }}
         run: |
+          git config user.name "moldmaker"
+          git config user.email "moldmaker@local"
           printf '%s' "$PAYLOAD" > /tmp/payload.json
           python3 src/handle_telegram.py --payload /tmp/payload.json --repo-root . \
             > /tmp/result.json || true
           cat /tmp/result.json
           echo "ack=$(jq -r '.ack_text // "Filed."' /tmp/result.json)" >> "$GITHUB_ENV"
-          git config user.name "moldmaker"
-          git config user.email "moldmaker@local"
           git push || true
+          # A failed deposit must turn the run red — never mask it.
+          jq -e '.ok == true' /tmp/result.json > /dev/null
 
       - name: Reply via bridge
+        if: always()
         env:
           TG_CHAT: ${{ github.event.client_payload.chat_id }}
           TELEGRAM_BRIDGE_URL: ${{ vars.TELEGRAM_BRIDGE_URL }}

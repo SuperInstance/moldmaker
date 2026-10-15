@@ -148,6 +148,26 @@ class DepositTests(unittest.TestCase):
         self.assertIn("action.sensor-options", agenda)
 
 
+    def test_deposit_sets_identity_when_missing(self):
+        # A fresh CI checkout has no git identity; a deposit must still
+        # be able to commit (regression: first live dispatch, 2026-10-14,
+        # filed nothing because the workflow configured git AFTER the
+        # handler ran and the pipeline assumed an identity existed).
+        subprocess.run(["git", "-C", self.store, "config", "--unset", "user.name"])
+        subprocess.run(["git", "-C", self.store, "config", "--unset", "user.email"])
+        old_home = os.environ.get("HOME")
+        os.environ["HOME"] = self.tmp  # no .gitconfig here: a bare CI checkout
+        try:
+            r = moldmaker.deposit(self.store, self.raw, self.interp, external_id="msg-ci")
+        finally:
+            if old_home is not None:
+                os.environ["HOME"] = old_home
+        self.assertTrue(r["created"])
+        name = subprocess.run(["git", "-C", self.store, "config", "--local", "user.name"],
+                              capture_output=True, text=True).stdout.strip()
+        self.assertEqual(name, "moldmaker")
+
+
 class HandlerTests(unittest.TestCase):
     def test_voice_without_transcript_needs_transcription(self):
         import handle_telegram
