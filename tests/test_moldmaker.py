@@ -154,6 +154,40 @@ class DepositTests(unittest.TestCase):
         with self.assertRaises(moldmaker.MoldmakerError):
             moldmaker.deposit(self.store, self.raw, self.interp, external_id="msg-1")
 
+    def test_subdir_store_in_parent_repo_deposits(self):
+        # Regression: fifth live dispatch (2026-10-14) was refused with
+        # "uncommitted changes outside the store (['dogfood/'])" — in a
+        # fresh CI checkout the routed store is a NEW subdirectory of
+        # the repo, and git collapsed it to one untracked-dir entry the
+        # dirty-tree guard could not match against its allowed files.
+        root = os.path.join(self.tmp, "parent")
+        os.makedirs(root)
+        subprocess.run(["git", "-C", root, "init", "-q", "-b", "main"], check=True)
+        subprocess.run(["git", "-C", root, "config", "user.name", "t"], check=True)
+        subprocess.run(["git", "-C", root, "config", "user.email", "t@t"], check=True)
+        with open(os.path.join(root, "README.md"), "w") as f:
+            f.write("parent repo\n")
+        subprocess.run(["git", "-C", root, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", root, "commit", "-q", "-m", "init"], check=True)
+        store = os.path.join(root, "dogfood")
+        moldmaker.init_store(store, "dogfood-project", commit=False)
+        r = moldmaker.deposit(store, self.raw, self.interp, external_id="msg-sub")
+        self.assertTrue(r["created"])
+        self.assertTrue(os.path.exists(os.path.join(store, "deposits", r["slug"] + ".md")))
+        # the deposit commit touched only the store's own paths
+        names = subprocess.run(["git", "-C", root, "show", "--pretty=",
+                                "--name-only", "HEAD"],
+                               capture_output=True, text=True).stdout.split()
+        self.assertTrue(names)
+        self.assertTrue(all(n.startswith("dogfood/") for n in names))
+        # ...and a genuinely foreign file still blocks the next deposit
+        with open(os.path.join(root, "UNRELATED.md"), "w") as f:
+            f.write("somebody else's work in progress\n")
+        raw2 = load("correction.txt")
+        interp2 = load_json("correction.interp.json")
+        with self.assertRaises(moldmaker.MoldmakerError):
+            moldmaker.deposit(store, raw2, interp2, external_id="msg-sub-2")
+
     def test_correction_is_a_new_deposit_original_intact(self):
         r1 = moldmaker.deposit(self.store, self.raw, self.interp, external_id="msg-1")
         raw2 = load("correction.txt")

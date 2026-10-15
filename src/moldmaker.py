@@ -105,7 +105,15 @@ def foreign_dirty_paths(store):
     allowed = (prefix + "deposits/", prefix + "specs/",
                prefix + "moldmaker.json", prefix + "STORE.md")
     bad = []
-    for line in git(store, "status", "--porcelain").stdout.splitlines():
+    # --untracked-files=all is load-bearing: without it git collapses a
+    # brand-new untracked directory to a single "dogfood/" entry, which
+    # matches none of the allowed file prefixes — so a store created
+    # fresh inside a parent repo (exactly the CI shape) looked like
+    # foreign dirt and every first deposit was refused (fifth live
+    # dispatch, 2026-10-14). Listing files individually keeps the guard
+    # precise: the store's own files pass, a foreign file still blocks.
+    for line in git(store, "status", "--porcelain",
+                    "--untracked-files=all").stdout.splitlines():
         path = line[3:]
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
