@@ -88,7 +88,7 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
   `moldmaker-think.yml` (manual dispatch: deterministic agenda/views
   regeneration always; the LLM completeness pass when dispatched
   with `llm=true`).
-- **`tests/` + `demo.py`** — 41 acceptance tests and a no-network
+- **`tests/` + `demo.py`** — 44 acceptance tests and a no-network
   end-to-end demo (two deposits, the second a correction; a retry
   that must not duplicate).
 
@@ -139,16 +139,21 @@ orchestrates and verifies; the fleet carries bulk):
   an env JSON; there is no project-selection conversation yet.
 - **No surfaces.** Phone/laptop/TV renderings (docs/SURFACES.md) are
   still design. Telegram + git are the v0 surfaces.
-- **Interpretation quality is the frontier.** Validation guarantees
-  traceability, not wisdom. A validated interpretation can still be
-  shallow; the feedback loop and the human's corrections are the
-  current corrective, and both are exercised in the tests/demo.
+- **Interpretation quality is the frontier — now with an
+  instrument.** Validation guarantees traceability, not wisdom, so
+  `src/harness.py` measures the wisdom mechanically: four hard memos
+  (tests/quality/ — an outright calculation to do, a rule killed in
+  the same breath, three topics in one ramble, an owner nobody can
+  name) scored against the live interpreter by the
+  `moldmaker-harness` workflow. The human's corrections remain the
+  other corrective; the harness is what tells us whether prompt or
+  model changes actually improve anything.
 
 ## Run it
 
 ```bash
 python3 demo.py                                   # end-to-end, no network
-python3 -m unittest discover -s tests             # 41 acceptance tests
+python3 -m unittest discover -s tests             # 44 acceptance tests
 python3 src/moldmaker.py init /path/to/store --project harbour
 python3 src/moldmaker.py deposit /path/to/store \
     --text-file memo.txt --interpretation interp.json --source telegram
