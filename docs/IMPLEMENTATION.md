@@ -145,9 +145,15 @@ orchestrates and verifies; the fleet carries bulk):
   (tests/quality/ — an outright calculation to do, a rule killed in
   the same breath, three topics in one ramble, an owner nobody can
   name) scored against the live interpreter by the
-  `moldmaker-harness` workflow. The human's corrections remain the
-  other corrective; the harness is what tells us whether prompt or
-  model changes actually improve anything.
+  `moldmaker-harness` workflow. First live run 2026-10-21:
+  **13/13** (run 39694718665) — a perfect score against the current
+  bar, which also means the fixture set needs harder cases over time
+  to stay informative (a harness that cannot fail measures nothing;
+  the ramp arithmetic check is there because the first-ever live
+  interpretation failed exactly that, before the prompt was
+  strengthened). The human's corrections remain the other
+  corrective; the harness is what tells us whether prompt or model
+  changes actually improve anything.
 
 ## Run it
 
