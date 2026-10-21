@@ -61,29 +61,36 @@ regression test. Successes are the baseline; this list is the report.
 | 5 | `uncommitted changes outside the store (['dogfood/'])` | In a fresh checkout the store is a brand-new subdirectory; git collapses an untracked directory to one `dogfood/` entry, which matches none of the dirty-tree guard's allowed file prefixes — the guard fired on the store's own newborn files | The guard lists untracked files individually (`--untracked-files=all`); a genuinely foreign file still blocks (`dcf1e54`) |
 | 6 | Retry of an already-filed message failed | The pipeline re-interpreted and validated a fresh LLM reading *before* checking whether the message was already filed — a retry was exactly as fragile as a first attempt | The deposit id never depends on the interpretation, so the already-filed check now comes first in `deposit()`; the Telegram handler short-circuits a known `message_id` before any LLM call (`037a4c1`) |
 
-Test suite: **18 acceptance tests**, all passing
-(`python3 -m unittest discover -s tests`). Each fault above has a
-regression test that reproduces the live failure on the old code.
+Test suite: **34 tests**, all passing as of 2026-10-21
+(`python3 -m unittest discover -s tests`), including the cold
+audit and think question-memory tests added with the referee
+pass. Each fault above has a regression test that reproduces
+the live failure on the old code.
 
 ## What is still broken or missing (2026-10-21)
 
-- **Live re-verification of fault 6 is queued behind a GitHub rate
-  limit.** On 2026-10-21 the SuperInstance account's GitHub REST
-  quota was exhausted (a direct dispatch attempt returned
-  `403 API rate limit exceeded` at 16:38 UTC), and the bridge's
-  mold dispatches began returning 500 in the same minutes — the
-  bridge's own error text sits in its Cloudflare log. The fix is
-  pushed and unit-verified; the end-to-end retry check (re-send a
-  filed message, expect a green run and no new commit) runs when
-  the quota window resets. Until then this item is *open*, not
-  green.
+- **Fault 6 — live re-verification VERIFIED 2026-10-21.** The
+  earlier GitHub rate limit (a direct dispatch returned
+  `403 API rate limit exceeded` at 16:38 UTC on 2026-10-21) had
+  cleared by the evening run. Re-sending the already-filed
+  message 99006 through the bridge produced run
+  [39681461783](https://github.com/SuperInstance/moldmaker/actions/runs/39681461783)
+  — conclusion `success`, *Deposit the transmission* green,
+  *Reply via bridge* green, and `origin/main` unchanged by the
+  run (`4b72880` before and after): no duplicate deposit, no
+  fresh LLM interpretation. Fault 6 is closed end-to-end.
 - **No native voice notes.** The bridge forwards text only. Voice
   needs: bridge accepts `message.voice` → fetch audio → retain
   audio + reference → STT → payload with transcript + `audio_ref`.
-- **The think cycle's LLM pass awaits its first live run.** The
-  completeness pass (`src/think.py`, specs/THINK.md) is built and
-  unit-tested offline; the workflow runs it on manual dispatch with
-  `llm=true`. It has not yet run live against the vault.
+- **The think cycle's LLM pass still awaits a successful live
+  run.** First live attempt 2026-10-21: run
+  [39681607533](https://github.com/SuperInstance/moldmaker/actions/runs/39681607533)
+  failed in the *LLM completeness pass* step with
+  `RuntimeError: HTTP 401 from https://superinstance-vault.casey-digennaro.workers.dev/proxy: {"error":"OIDC verification failed"}`.
+  No `think:` commit landed and no `dogfood/specs/THINK.md` was
+  produced. The completeness pass (`src/think.py`) remains built
+  and unit-tested offline; this vault OIDC failure is the open
+  blocker for its first live run.
 - **Minimal routing.** Chat→project mapping is an env JSON; there
   is no project-selection conversation yet.
 - **No surfaces beyond Telegram + git.** Phone/laptop/TV native
