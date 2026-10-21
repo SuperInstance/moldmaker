@@ -296,8 +296,21 @@ def validate_interpretation(raw, interp, approved_ids=frozenset()):
         elif status == "approved":
             notes.append(f"action {a['id']}: 'approved' confirmed (human-approved)")
         _require(status in {"proposed", "approved"}, f"action {a['id']}: bad status {status!r}")
+        # WHY + COST (imported from beam-quilt's patch contract: a
+        # transmission carries OUTPUT + WHY + COST; a bare directive
+        # with no why is non-conforming). Why is required; cost may
+        # honestly be "unknown" but the field is always present.
+        why = a.get("why")
+        _require(isinstance(why, str) and why.strip(),
+                 f"action {a['id']}: missing why — a bare directive is "
+                 "non-conforming; every action states why it exists")
+        cost = a.get("cost")
+        _require(cost is None or isinstance(cost, str),
+                 f"action {a['id']}: cost must be a string")
         clean_actions.append({"id": a["id"], "title": a.get("title", "").strip(),
                               "owner": owner, "status": status,
+                              "why": why.strip(),
+                              "cost": (cost or "unknown").strip(),
                               "source_quote": a["source_quote"],
                               "confidence": a.get("confidence")})
     clean["actions"] = clean_actions
@@ -529,7 +542,11 @@ def regenerate_views(store):
             "An inference is not an authorization.", ""]
     for t in twins:
         for a in t["actions"]:
+            # Twins filed before the why/cost contract have neither
+            # field; render the absence honestly rather than crashing.
+            why = a.get("why") or "(why not recorded — predates the why/cost contract)"
             acts.append(f"- **{a['id']}** [{a['status']}] ({a['owner']}) {a['title']} "
+                        f"— why: {why} · cost: {a.get('cost') or 'unknown'} "
                         f"— deposit {t['meta']['deposit_id']}")
     with open(os.path.join(specs, "ACTIONS.md"), "w") as f:
         f.write("\n".join(acts).rstrip() + "\n")

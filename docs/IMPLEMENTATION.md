@@ -37,7 +37,9 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
   message; regenerate INDEX / ACTIONS / OPEN-QUESTIONS / AGENDA
   views; status and agenda commands. Enforced mechanically:
   verbatim Layer A; exact-quote/span traceability for every
-  interpreted element; approval gates (inferred ≠ authorized, with
+  interpreted element; every action carrying WHY + COST (the
+  beam-quilt contract import — a bare directive is refused);
+  approval gates (inferred ≠ authorized, with
   demotions recorded, never silent — and honored approvals now leave
   a confirmation note in the record, so they are provable later);
   idempotent deposits; secrets refused; foreign dirty-tree changes
@@ -79,7 +81,7 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
   `moldmaker-think.yml` (manual dispatch: deterministic agenda/views
   regeneration always; the LLM completeness pass when dispatched
   with `llm=true`).
-- **`tests/` + `demo.py`** — 34 acceptance tests and a no-network
+- **`tests/` + `demo.py`** — 37 acceptance tests and a no-network
   end-to-end demo (two deposits, the second a correction; a retry
   that must not duplicate).
 
@@ -114,15 +116,16 @@ orchestrates and verifies; the fleet carries bulk):
   (see [DEPLOYMENT.md](DEPLOYMENT.md)). Still open as of
   2026-10-21: live re-verification of the retry-idempotency fix,
   queued behind a GitHub REST rate limit on the account.
-- **No native voice notes.** The bridge on hand forwards text only.
-  Voice needs: bridge accepts `message.voice` → fetch audio → retain
-  audio + reference → STT → payload with transcript + audio_ref.
-  Dictated text works through the existing route now.
-- **The think cycle's LLM pass is new and not yet run live.** The
-  completeness pass (`src/think.py`) is built and unit-tested
-  (offline, injected LLM), and the workflow can run it on dispatch;
-  its first live run against the vault has not happened yet, and it
-  is manual-dispatch only — no heartbeat schedule.
+- **Voice notes are wired but await a first real one.** The bridge
+  transcribes voice via the fleet's STT worker and routes on a
+  spoken "mold" address; the handler side (transcript + `audio_ref`)
+  was already in place. Synthetic and harness tests pass; a real
+  voice note end-to-end has not happened yet.
+- **The think cycle runs, manually.** The completeness pass has run
+  live against the vault (first success 2026-10-21, run 39689443045)
+  and `specs/THINK.md` is on main. It remains manual-dispatch only —
+  no heartbeat schedule, so question-exhaustion is not yet a curve
+  anyone can watch.
 - **One store per route, minimal routing.** Chat→project mapping is
   an env JSON; there is no project-selection conversation yet.
 - **No surfaces.** Phone/laptop/TV renderings (docs/SURFACES.md) are
@@ -136,7 +139,7 @@ orchestrates and verifies; the fleet carries bulk):
 
 ```bash
 python3 demo.py                                   # end-to-end, no network
-python3 -m unittest discover -s tests             # 34 acceptance tests
+python3 -m unittest discover -s tests             # 37 acceptance tests
 python3 src/moldmaker.py init /path/to/store --project harbour
 python3 src/moldmaker.py deposit /path/to/store \
     --text-file memo.txt --interpretation interp.json --source telegram

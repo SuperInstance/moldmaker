@@ -296,5 +296,48 @@ class HandlerTests(unittest.TestCase):
         self.assertIn("Already filed", out2["ack_text"])
 
 
+class WhyCostTests(unittest.TestCase):
+    """The beam-quilt import: every action carries WHY + COST."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.store = os.path.join(self.tmp, "store")
+        moldmaker.init_store(self.store, commit=False)
+
+    def test_why_and_cost_reach_the_twin_and_the_view(self):
+        dep = moldmaker.deposit(self.store, load("bilge.txt"),
+                                load_json("bilge.interp.json"),
+                                timestamp="2026-10-14T08:00:00", commit=False)
+        twin = json.load(open(os.path.join(
+            self.store, "deposits", dep["slug"] + ".a2a.json")))
+        a = twin["actions"][0]
+        self.assertTrue(a["why"])
+        self.assertTrue(a["cost"])
+        actions_md = open(os.path.join(self.store, "specs", "ACTIONS.md")).read()
+        self.assertIn("why:", actions_md)
+        self.assertIn("cost:", actions_md)
+
+    def test_action_without_why_is_refused(self):
+        interp = load_json("bilge.interp.json")
+        del interp["actions"][0]["why"]
+        with self.assertRaises(moldmaker.MoldmakerError):
+            moldmaker.deposit(self.store, load("bilge.txt"), interp,
+                              timestamp="2026-10-14T08:00:00", commit=False)
+
+    def test_legacy_twin_without_why_still_renders(self):
+        dep = moldmaker.deposit(self.store, load("bilge.txt"),
+                                load_json("bilge.interp.json"),
+                                timestamp="2026-10-14T08:00:00", commit=False)
+        path = os.path.join(self.store, "deposits", dep["slug"] + ".a2a.json")
+        twin = json.load(open(path))
+        for a in twin["actions"]:
+            del a["why"]
+            del a["cost"]
+        json.dump(twin, open(path, "w"))
+        moldmaker.regenerate_views(self.store)  # must not crash
+        actions_md = open(os.path.join(self.store, "specs", "ACTIONS.md")).read()
+        self.assertIn("predates the why/cost contract", actions_md)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

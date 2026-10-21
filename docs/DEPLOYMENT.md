@@ -24,8 +24,11 @@ allowlist and brokers the LLM call; the workflow authenticates to it
 with a GitHub OIDC token. No secrets live in this repo.
 
 **To use it:** send the existing Telegram bot a message beginning
-`mold:` followed by the memo. Dictated text works today (Telegram
-sends it as text). Native voice notes do not — see deficits below.
+`mold:` followed by the memo — or send a **voice note** and say
+"mold" first: the bridge transcribes it (the fleet's Cloudflare
+Whisper worker) and files it with its audio reference. Voice notes
+not addressed to Moldmaker keep flowing to the lobster as
+transcripts, untouched.
 
 ## The evidence
 
@@ -79,18 +82,27 @@ the live failure on the old code.
   *Reply via bridge* green, and `origin/main` unchanged by the
   run (`4b72880` before and after): no duplicate deposit, no
   fresh LLM interpretation. Fault 6 is closed end-to-end.
-- **No native voice notes.** The bridge forwards text only. Voice
-  needs: bridge accepts `message.voice` → fetch audio → retain
-  audio + reference → STT → payload with transcript + `audio_ref`.
-- **The think cycle's LLM pass still awaits a successful live
-  run.** First live attempt 2026-10-21: run
-  [39681607533](https://github.com/SuperInstance/moldmaker/actions/runs/39681607533)
-  failed in the *LLM completeness pass* step with
-  `RuntimeError: HTTP 401 from https://superinstance-vault.casey-digennaro.workers.dev/proxy: {"error":"OIDC verification failed"}`.
-  No `think:` commit landed and no `dogfood/specs/THINK.md` was
-  produced. The completeness pass (`src/think.py`) remains built
-  and unit-tested offline; this vault OIDC failure is the open
-  blocker for its first live run.
+- **Voice notes are live; the first real one is still Casey's to
+  send.** The bridge grew a voice path on 2026-10-21: `message.voice`
+  → Telegram file fetch → the fleet's Cloudflare STT worker
+  (Whisper) → transcript → the same routing as text, with the spoken
+  address ("Mold, …") recognised for transcripts only, and
+  `audio_ref` (the Telegram file id) carried into the deposit.
+  Verified by a five-scenario local harness (spoken mold, voice to
+  lobster with the legacy payload shape byte-for-byte, typed
+  regressions, graceful failure on a bad file) and live synthetic
+  webhook probes. A real voice note end-to-end is the remaining
+  proof.
+- **The think cycle's LLM pass has now run live.** First attempt
+  2026-10-21 (run
+  [39681607533](https://github.com/SuperInstance/moldmaker/actions/runs/39681607533))
+  failed with a vault 401 — the workflow had requested its OIDC
+  token with the wrong audience. Fixed by mirroring the telegram
+  workflow's token step; run
+  [39689443045](https://github.com/SuperInstance/moldmaker/actions/runs/39689443045)
+  succeeded and `dogfood/specs/THINK.md` exists on main (3 proposed
+  questions over the boat-launch deposit, all deposit-traced).
+  Still manual-dispatch only — no heartbeat schedule yet.
 - **Minimal routing.** Chat→project mapping is an env JSON; there
   is no project-selection conversation yet.
 - **No surfaces beyond Telegram + git.** Phone/laptop/TV native

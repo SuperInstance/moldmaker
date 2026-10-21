@@ -60,6 +60,8 @@ SCHEMA_DESCRIPTION = """Return ONE JSON object, no prose around it:
   "actions": [
     {"id": "action.slug", "title": "work an agent could do",
      "owner": "logic-agent|hardware-agent|research-agent|human|unspecified",
+     "why": "why this action exists — what breaks or is lost without it",
+     "cost": "rough cost: effort, time, new dependencies — or \\"unknown\\"",
      "source_quote": "EXACT substring", "confidence": 0.0-1.0, "status": "proposed"}
   ],
   "questions": [
@@ -92,6 +94,9 @@ Rules:
 - Questions for the user are a budget: include only questions whose answers
   would change the build.
 - Actions always have status "proposed". You cannot approve anything.
+- Every action MUST carry "why" and "cost": a bare directive with no
+  why is non-conforming and will be rejected. Cost is a rough,
+  honest estimate ("~2h build", "one new dependency", "unknown").
 - Action owners must be exactly one of the listed values. Software, code,
   and application-development work belongs to "logic-agent"; do not invent
   owner labels such as "software-agent"."""
