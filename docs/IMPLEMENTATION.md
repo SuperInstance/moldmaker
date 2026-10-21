@@ -1,8 +1,11 @@
 # Implementation — v0, and how it reroutes Zero
 
-Status as of 2026-10-14: **v0 core built and tested.** This document
-is the honest map: what exists, what it was built from, what the
-fleet contributed, and what is still missing.
+Status as of 2026-10-21: **built, deployed, and live-verified**
+(first live deposit 2026-10-15; the deployment record — route,
+evidence, fault stack, current deficits — lives in
+[DEPLOYMENT.md](DEPLOYMENT.md)). This document is the honest map:
+what exists, what it was built from, what the fleet contributed,
+and what is still missing.
 
 ## The reroute, in one picture
 
@@ -50,7 +53,7 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
 - **`.github/workflows/`** — `moldmaker-telegram.yml`
   (repository_dispatch → deposit → push → bridge reply) and
   `moldmaker-think.yml` (manual-dispatch agenda/views regeneration).
-- **`tests/` + `demo.py`** — 12 acceptance tests and a no-network
+- **`tests/` + `demo.py`** — 18 acceptance tests and a no-network
   end-to-end demo (two deposits, the second a correction; a retry
   that must not duplicate).
 
@@ -79,10 +82,12 @@ orchestrates and verifies; the fleet carries bulk):
 
 ## What v0 does NOT do (the honest deficit)
 
-- **Not deployed.** The workflows are in this repo but the repo is
-  not registered with the vault as a Moldmaker agent, and no live
-  Telegram bot routes here. Deposits today happen by CLI/demo, or by
-  dispatching the workflow once vault registration exists.
+- **Deployed, with one verification still open.** The repo is
+  registered with the vault and the live Telegram bot routes
+  `mold:` messages here; the first live deposit is in `dogfood/`
+  (see [DEPLOYMENT.md](DEPLOYMENT.md)). Still open as of
+  2026-10-21: live re-verification of the retry-idempotency fix,
+  queued behind a GitHub REST rate limit on the account.
 - **No native voice notes.** The bridge on hand forwards text only.
   Voice needs: bridge accepts `message.voice` → fetch audio → retain
   audio + reference → STT → payload with transcript + audio_ref.
@@ -104,7 +109,7 @@ orchestrates and verifies; the fleet carries bulk):
 
 ```bash
 python3 demo.py                                   # end-to-end, no network
-python3 -m unittest discover -s tests             # 12 acceptance tests
+python3 -m unittest discover -s tests             # 18 acceptance tests
 python3 src/moldmaker.py init /path/to/store --project harbour
 python3 src/moldmaker.py deposit /path/to/store \
     --text-file memo.txt --interpretation interp.json --source telegram

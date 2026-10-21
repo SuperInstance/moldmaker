@@ -59,6 +59,11 @@ to crystallize.
 - [docs/ORIGIN.md](docs/ORIGIN.md) — how this repo brewed out of one
   morning's conversation (2026-10-13), including the ideas that were
   tried and rejected on the way.
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — the live route, the
+  evidence, the fault stack, and what is still broken.
+- [dogfood/](dogfood/) — the system eating its own cooking: the
+  live store, holding the first real deposit and its generated
+  views (INDEX, ACTIONS, OPEN-QUESTIONS, AGENDA).
 - [example/](example/) — one worked deposit: a voice memo as human
   markdown, and its A2A twin.
 - [specs/OPEN-QUESTIONS.md](specs/OPEN-QUESTIONS.md) — this project's
@@ -67,14 +72,21 @@ to crystallize.
 
 ## Status
 
-**v0 core built and tested (2026-10-14); not yet deployed.**
+**Deployed and live-verified (2026-10-15).** Send the existing
+Telegram bot a message beginning `mold:` and it is filed here as a
+deposit — human markdown, A2A twin, and a commentary commit — in
+the [`dogfood/`](dogfood/) store. The first live deposit and the
+six-fault stack it took to get one green run are recorded in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), along with what is still
+broken (today: a GitHub rate limit is holding the final retry
+re-verification; native voice notes and the LLM completeness pass
+are still unbuilt).
+
 The spec set came first (2026-10-13, distilled from one morning of
-voice-driven conversation). The first build downstream of it now
-exists: `src/moldmaker.py` (deterministic deposit pipeline),
+voice-driven conversation). The build downstream of it:
+`src/moldmaker.py` (deterministic deposit pipeline),
 `src/interpreter.py` (LLM half), `src/handle_telegram.py` (the
-Zero-chassis Telegram face), workflows, 12 acceptance tests, and a
+Zero-chassis Telegram face), workflows, 18 acceptance tests, and a
 no-network `demo.py`. See [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
-for what the reroute took from the Zero agent, what the fleet
-contributed, and — in the open — what v0 still does not do
-(no live bot routing yet, no native voice notes, no LLM
-completeness pass yet).
+for what the reroute took from the Zero agent and what the fleet
+contributed — taken and refused, in the open.
