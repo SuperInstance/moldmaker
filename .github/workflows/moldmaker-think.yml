@@ -67,19 +67,19 @@ jobs:
           print(moldmaker.status(store))
           EOF
 
-      - name: Get GitHub OIDC token
+      - name: Get OIDC token for vault
         if: ${{ inputs.llm }}
-        id: oidc
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const token = await core.getIDToken('superinstance-vault');
-            core.setOutput('token', token);
+        # Mirrors moldmaker-telegram.yml's working pattern exactly:
+        # raw token endpoint, audience "vault". (The first live think
+        # run, 39681607533, failed vault verification with a 401 after
+        # requesting a differently-named audience via github-script.)
+        run: |
+          OIDC_TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=vault" | jq -r '.value')
+          echo "OIDC_TOKEN=$OIDC_TOKEN" >> "$GITHUB_ENV"
 
       - name: LLM completeness pass
         if: ${{ inputs.llm }}
-        env:
-          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
         run: |
           python3 src/think.py "$STORE" --provider vault
 
