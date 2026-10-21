@@ -64,7 +64,7 @@ regression test. Successes are the baseline; this list is the report.
 | 5 | `uncommitted changes outside the store (['dogfood/'])` | In a fresh checkout the store is a brand-new subdirectory; git collapses an untracked directory to one `dogfood/` entry, which matches none of the dirty-tree guard's allowed file prefixes — the guard fired on the store's own newborn files | The guard lists untracked files individually (`--untracked-files=all`); a genuinely foreign file still blocks (`dcf1e54`) |
 | 6 | Retry of an already-filed message failed | The pipeline re-interpreted and validated a fresh LLM reading *before* checking whether the message was already filed — a retry was exactly as fragile as a first attempt | The deposit id never depends on the interpretation, so the already-filed check now comes first in `deposit()`; the Telegram handler short-circuits a known `message_id` before any LLM call (`037a4c1`) |
 
-Test suite: **37 tests**, all passing as of 2026-10-21
+Test suite: **41 tests**, all passing as of 2026-10-21
 (`python3 -m unittest discover -s tests`), including the cold
 audit and think question-memory tests added with the referee
 pass. Each fault above has a regression test that reproduces

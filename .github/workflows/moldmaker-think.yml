@@ -10,15 +10,16 @@
 #      it. THINK.md is a generated view of agent inferences, never a
 #      deposit; it is labeled as such in the file itself.
 #
-# Manual dispatch only. To make it a heartbeat, add:
-#   schedule:
-#     - cron: '*/30 * * * *'
-# under `on:` once a project store is live and the commit cadence is
-# wanted.
+# Runs on manual dispatch, and nightly on a schedule (the heartbeat:
+# the completeness pass + blackboard re-render over the default store,
+# committing only when something actually changed — question counts
+# trending to zero across those commits is the completeness curve).
 
 name: moldmaker-think
 
 on:
+  schedule:
+    - cron: '0 8 * * *'
   workflow_dispatch:
     inputs:
       project:
@@ -68,7 +69,7 @@ jobs:
           EOF
 
       - name: Get OIDC token for vault
-        if: ${{ inputs.llm }}
+        if: ${{ inputs.llm || github.event_name == 'schedule' }}
         # Mirrors moldmaker-telegram.yml's working pattern exactly:
         # raw token endpoint, audience "vault". (The first live think
         # run, 39681607533, failed vault verification with a 401 after
@@ -79,9 +80,13 @@ jobs:
           echo "OIDC_TOKEN=$OIDC_TOKEN" >> "$GITHUB_ENV"
 
       - name: LLM completeness pass
-        if: ${{ inputs.llm }}
+        if: ${{ inputs.llm || github.event_name == 'schedule' }}
         run: |
           python3 src/think.py "$STORE" --provider vault
+
+      - name: Render the blackboard face
+        run: |
+          python3 src/blackboard.py "$STORE"
 
       - name: Commit the think cycle
         run: |

@@ -60,6 +60,13 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
   validate/deposit (max 3 attempts with feedback) → acknowledgement
   text (filed title, counts, first open question). A voice payload
   with no transcript returns `needs: transcription` and files nothing.
+- **`src/blackboard.py`** — the blackboard face (docs/SURFACES.md):
+  one self-contained HTML page rendered from a store — state counts,
+  the human's questions in order, the think pass's proposals, the
+  work queue with why/cost, the ledger. Deterministic (the stamp is
+  the newest deposit's timestamp), escaped, no JavaScript, no
+  external assets: the whole project at a glance, native to a big
+  screen, where the repo is native to the laptop.
 - **`src/think.py`** — the completeness pass (docs/PROCESS.md §4).
   Reads the whole spec set (every deposit's intents, actions, open
   questions, commentary) and asks the LLM one question: *what's
@@ -81,7 +88,7 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
   `moldmaker-think.yml` (manual dispatch: deterministic agenda/views
   regeneration always; the LLM completeness pass when dispatched
   with `llm=true`).
-- **`tests/` + `demo.py`** — 37 acceptance tests and a no-network
+- **`tests/` + `demo.py`** — 41 acceptance tests and a no-network
   end-to-end demo (two deposits, the second a correction; a retry
   that must not duplicate).
 
@@ -121,11 +128,13 @@ orchestrates and verifies; the fleet carries bulk):
   spoken "mold" address; the handler side (transcript + `audio_ref`)
   was already in place. Synthetic and harness tests pass; a real
   voice note end-to-end has not happened yet.
-- **The think cycle runs, manually.** The completeness pass has run
-  live against the vault (first success 2026-10-21, run 39689443045)
-  and `specs/THINK.md` is on main. It remains manual-dispatch only —
-  no heartbeat schedule, so question-exhaustion is not yet a curve
-  anyone can watch.
+- **The think cycle runs nightly; the curve is young.** The
+  completeness pass has run live against the vault (first success
+  2026-10-21, run 39689443045), `specs/THINK.md` is on main, and the
+  think workflow now also runs on a nightly schedule (08:00 UTC)
+  over the default store, re-rendering the blackboard each time and
+  committing only on change. Question-exhaustion becomes a watchable
+  curve only as those nightly commits accumulate.
 - **One store per route, minimal routing.** Chat→project mapping is
   an env JSON; there is no project-selection conversation yet.
 - **No surfaces.** Phone/laptop/TV renderings (docs/SURFACES.md) are
@@ -139,7 +148,7 @@ orchestrates and verifies; the fleet carries bulk):
 
 ```bash
 python3 demo.py                                   # end-to-end, no network
-python3 -m unittest discover -s tests             # 37 acceptance tests
+python3 -m unittest discover -s tests             # 41 acceptance tests
 python3 src/moldmaker.py init /path/to/store --project harbour
 python3 src/moldmaker.py deposit /path/to/store \
     --text-file memo.txt --interpretation interp.json --source telegram
