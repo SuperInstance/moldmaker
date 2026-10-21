@@ -35,9 +35,9 @@ def stub_result(deposit_id):
                   "deposit_ids": [deposit_id]}],
         "contradictions": [],
         "proposed_questions": [
-            {"question": "Is the boat occupied all season, or left "
-                         "unattended for long stretches?",
-             "why": "The answer changes which bilge mitigations matter.",
+            {"question": "Should the alarm also reach someone ashore "
+                         "when it fires, and who?",
+             "why": "A shore contact changes the notification build.",
              "priority": "high", "deposit_ids": [deposit_id]}],
     }
 
@@ -91,7 +91,7 @@ class ThinkTests(unittest.TestCase):
         self.assertIn(self.dep_id, seen["prompt"])
         md = open(os.path.join(self.store, "specs", "THINK.md")).read()
         self.assertIn("NOT user statements", md)
-        self.assertIn("occupied all season", md)
+        self.assertIn("reach someone ashore", md)
         self.assertIn("Season occupancy unsettled", md)
         self.assertIn(self.dep_id, md)
 
@@ -112,6 +112,27 @@ class ThinkTests(unittest.TestCase):
         self.assertEqual(summary["deposits"], 0)
         md = open(os.path.join(empty, "specs", "THINK.md")).read()
         self.assertIn("No deposits in this store yet", md)
+
+    def test_proposal_duplicating_an_open_question_is_filtered(self):
+        # The bilge deposit already asks this, verbatim, as an open
+        # question — the pass must not hand it back as a new proposal.
+        stub = lambda prompt: {"proposed_questions": [  # noqa: E731
+            {"question": "Is the boat occupied all season, or left "
+                         "unattended for long stretches?",
+             "why": "w", "priority": "high", "deposit_ids": [self.dep_id]}]}
+        summary = think.run_think(self.store, complete_fn=stub)
+        self.assertEqual(summary["proposed_questions"], 0)
+        md = open(os.path.join(self.store, "specs", "THINK.md")).read()
+        self.assertIn("already_open", md)
+
+    def test_second_run_does_not_repropose(self):
+        stub = lambda prompt: stub_result(self.dep_id)  # noqa: E731
+        first = think.run_think(self.store, complete_fn=stub)
+        self.assertEqual(first["proposed_questions"], 1)
+        second = think.run_think(self.store, complete_fn=stub)
+        self.assertEqual(second["proposed_questions"], 0)
+        md = open(os.path.join(self.store, "specs", "THINK.md")).read()
+        self.assertIn("previously_proposed", md)
 
     def test_cli_prompt_only(self):
         env = dict(os.environ, PYTHONPATH="")

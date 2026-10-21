@@ -38,9 +38,17 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
   views; status and agenda commands. Enforced mechanically:
   verbatim Layer A; exact-quote/span traceability for every
   interpreted element; approval gates (inferred ≠ authorized, with
-  demotions recorded, never silent); idempotent deposits; secrets
-  refused; foreign dirty-tree changes refuse a deposit rather than
-  being swept into it; no dates in filenames.
+  demotions recorded, never silent — and honored approvals now leave
+  a confirmation note in the record, so they are provable later);
+  idempotent deposits; secrets refused; foreign dirty-tree changes
+  refuse a deposit rather than being swept into it; no dates in
+  filenames. The `audit` command is the referee's pass: it
+  re-derives every checkable claim from a filed store, cold —
+  verbatim sha, deposit-id recomputation, Layer A equality, quote
+  re-tracing, approval-note discipline — and reports findings
+  instead of trusting deposit time. (Born from the fleet's
+  verify-by-re-execution lesson: a record nobody can re-check is a
+  claim, not a record.)
 - **`src/interpreter.py`** — the LLM half. A strict prompt contract
   (compute the hinted calculation, mark unresolved references
   UNRESOLVED, agent-side questions become actions not user questions)
@@ -57,7 +65,11 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
   fleet should settle itself, contradictions to surface, and proposed
   questions for the user — survivors only, budget 7, every item traced
   to the deposits that motivated it (unknown deposit ids are refused
-  mechanically). THINK.md is labeled agent inference; it never enters
+  mechanically). The pass also has question memory, enforced
+  mechanically (fleet prior art: SuperInstance/question-tree tracks
+  from the question side): a proposal duplicating an already-open
+  question, or one an earlier think run already proposed, is filtered
+  and counted in the render. THINK.md is labeled agent inference; it never enters
   OPEN-QUESTIONS.md as user-derived. An empty result is reported as
   question exhaustion, not treated as an error. Providers match the
   interpreter (vault or OpenAI-compatible); the LLM call is injected,
@@ -67,7 +79,7 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
   `moldmaker-think.yml` (manual dispatch: deterministic agenda/views
   regeneration always; the LLM completeness pass when dispatched
   with `llm=true`).
-- **`tests/` + `demo.py`** — 26 acceptance tests and a no-network
+- **`tests/` + `demo.py`** — 34 acceptance tests and a no-network
   end-to-end demo (two deposits, the second a correction; a retry
   that must not duplicate).
 
@@ -124,10 +136,11 @@ orchestrates and verifies; the fleet carries bulk):
 
 ```bash
 python3 demo.py                                   # end-to-end, no network
-python3 -m unittest discover -s tests             # 18 acceptance tests
+python3 -m unittest discover -s tests             # 34 acceptance tests
 python3 src/moldmaker.py init /path/to/store --project harbour
 python3 src/moldmaker.py deposit /path/to/store \
     --text-file memo.txt --interpretation interp.json --source telegram
+python3 src/moldmaker.py audit /path/to/store     # cold re-verification of the filed record
 python3 src/moldmaker.py status /path/to/store
 python3 src/moldmaker.py agenda /path/to/store
 python3 src/interpreter.py --text-file memo.txt --provider vault --out interp.json

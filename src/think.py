@@ -30,6 +30,7 @@ call itself is injected (`complete_fn`) so tests run offline.
 import argparse
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -209,7 +210,7 @@ def render_think_md(clean, cuts, n_deposits):
     else:
         lines.append("- (none found)")
     if cuts:
-        lines += ["", "_Budget cuts applied: " +
+        lines += ["", "_Filtered/cut by the discipline: " +
                   ", ".join(f"{k} −{v}" for k, v in sorted(cuts.items())) + "._"]
     return "\n".join(lines).rstrip() + "\n"
 
@@ -266,6 +267,34 @@ def complete(prompt, provider="vault", model=None):
     raise ThinkError(f"unknown provider {provider!r}")
 
 
+# ---------------------------------------------------------------- question memory
+
+def _norm_question(text):
+    return re.sub(r"\s+", " ", text.strip().lower()).rstrip("?.")
+
+
+def _previous_proposals(store):
+    """Questions earlier think runs already proposed, read back from
+    the filed THINK.md. Fleet prior art (SuperInstance/question-tree)
+    tracks work from the question side: a question has a history, and
+    re-proposing a settled or already-asked question wastes the one
+    scarce resource — the user's attention."""
+    path = os.path.join(store, "specs", "THINK.md")
+    if not os.path.exists(path):
+        return set()
+    out = set()
+    in_section = False
+    with open(path) as f:
+        for line in f:
+            if line.startswith("## "):
+                in_section = line.startswith("## Proposed questions")
+                continue
+            if in_section and line.startswith("- ["):
+                text = line.split("] ", 1)[-1].split(" — why:", 1)[0]
+                out.add(_norm_question(text))
+    return out
+
+
 # ---------------------------------------------------------------- run
 
 def run_think(store, provider="vault", model=None, complete_fn=None):
@@ -290,6 +319,23 @@ def run_think(store, provider="vault", model=None, complete_fn=None):
     raw = fn(prompt)
     known = {t["meta"]["deposit_id"] for t in twins}
     clean, cuts = validate_think(raw, known)
+    # Question memory, enforced mechanically rather than trusted to
+    # the model's prompt obedience: never propose what is already an
+    # open question in the record, and never re-propose what an
+    # earlier think run already put on the table.
+    open_qs = {_norm_question(q["question"])
+               for t in twins for q in t["questions"]}
+    previous = _previous_proposals(store)
+    kept = []
+    for q in clean["proposed_questions"]:
+        nq = _norm_question(q["question"])
+        if nq in open_qs:
+            cuts["already_open"] = cuts.get("already_open", 0) + 1
+        elif nq in previous:
+            cuts["previously_proposed"] = cuts.get("previously_proposed", 0) + 1
+        else:
+            kept.append(q)
+    clean["proposed_questions"] = kept
     with open(out_path, "w") as f:
         f.write(render_think_md(clean, cuts, len(twins)))
     return {"deposits": len(twins), "gaps": len(clean["gaps"]),

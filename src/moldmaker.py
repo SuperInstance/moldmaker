@@ -259,6 +259,8 @@ def validate_interpretation(raw, interp, approved_ids=frozenset()):
         if status == "approved" and it["id"] not in approved_ids:
             status = "proposed"
             notes.append(f"intent {it['id']}: 'approved' demoted to 'proposed' (not human-approved)")
+        elif status == "approved":
+            notes.append(f"intent {it['id']}: 'approved' confirmed (human-approved)")
         clean_intents.append({"id": it["id"], "kind": it.get("kind", "statement"),
                               "statement": it.get("statement", "").strip(),
                               "source_quote": it["source_quote"],
@@ -291,6 +293,8 @@ def validate_interpretation(raw, interp, approved_ids=frozenset()):
         if status == "approved" and a["id"] not in approved_ids:
             status = "proposed"
             notes.append(f"action {a['id']}: 'approved' demoted to 'proposed' (not human-approved)")
+        elif status == "approved":
+            notes.append(f"action {a['id']}: 'approved' confirmed (human-approved)")
         _require(status in {"proposed", "approved"}, f"action {a['id']}: bad status {status!r}")
         clean_actions.append({"id": a["id"], "title": a.get("title", "").strip(),
                               "owner": owner, "status": status,
@@ -387,6 +391,75 @@ def find_existing(store, deposit_id):
         if t["meta"]["deposit_id"] == deposit_id:
             return t["meta"]["slug"]
     return None
+
+
+def audit_store(store):
+    """Cold re-verification of a filed store — the referee's pass.
+
+    Deposit-time validation proves a deposit was well-formed when it
+    landed. This audit re-derives every checkable claim from the filed
+    record alone, with no interpreter output trusted: the verbatim's
+    sha, the deposit id recomputed from (source, external id, raw),
+    the human file's Layer A against the twin's verbatim, every quote
+    and span re-traced to the raw transmission, and the approval
+    discipline — an item filed as 'approved' must carry its
+    human-approval confirmation note in the record. Returns a list of
+    findings; empty means the record re-verifies clean, cold.
+    """
+    findings = []
+    for twin in load_twins(store):
+        m = twin["meta"]
+        did = m["deposit_id"]
+        raw = twin["source"]["raw"]
+
+        def bad(msg, _did=did):
+            findings.append(f"{_did}: {msg}")
+
+        # verbatim_sha256 exists on deposits filed since the audit was
+        # added; older deposits are bound by the deposit-id recompute
+        # (when no external_id) plus Layer A equality and quote tracing.
+        if m.get("verbatim_sha256") and \
+                hashlib.sha256(raw.encode()).hexdigest() != m["verbatim_sha256"]:
+            bad("verbatim_sha256 does not match the twin's raw transmission")
+        if deposit_id_for(m["source"], m.get("external_id"), raw) != did:
+            bad("deposit_id does not recompute from source/external_id/raw")
+        path = os.path.join(store, "deposits", m["slug"] + ".md")
+        if not os.path.exists(path):
+            bad(f"human file missing (deposits/{m['slug']}.md)")
+        else:
+            with open(path) as f:
+                text = f.read()
+            marker = "## Layer A — the said (verbatim)"
+            if marker not in text:
+                bad("human file has no Layer A section")
+            else:
+                layer_a = text.split(marker, 1)[1].split("## Layer B", 1)[0].strip()
+                if layer_a != raw.strip():
+                    bad("human file Layer A differs from the twin's verbatim")
+        notes_blob = "\n".join(twin.get("validation_notes", []))
+
+        def check(item, label):
+            try:
+                _check_quote(raw, item, label)
+            except MoldmakerError as e:
+                bad(str(e))
+
+        for i, sec in enumerate(twin["sections"]):
+            check(sec, f"sections[{i}]")
+            for j, ann in enumerate(sec["annotations"]):
+                if ann.get("basis") != "context" and ann.get("source_quote"):
+                    check(ann, f"sections[{i}].annotations[{j}]")
+        for coll, noun in ((twin["intents"], "intent"), (twin["actions"], "action")):
+            for item in coll:
+                check(item, f"{noun} {item['id']}")
+                if item["status"] == "approved" and \
+                        f"{noun} {item['id']}: 'approved' confirmed (human-approved)" \
+                        not in notes_blob:
+                    bad(f"{noun} {item['id']}: filed 'approved' with no "
+                        "human-approval confirmation in the record")
+        for q in twin["questions"]:
+            check(q, f"question {q['id']}")
+    return findings
 
 
 # ---------------------------------------------------------------- rendering
@@ -527,7 +600,8 @@ def deposit(store, raw, interp, source="text", timestamp=None, external_id=None,
     slug = f"{slugify(clean['title'])}-{dep_id[:8]}"
     meta = {"deposit_id": dep_id, "slug": slug, "title": clean["title"],
             "source": source, "timestamp": timestamp,
-            "external_id": external_id, "audio_ref": audio_ref}
+            "external_id": external_id, "audio_ref": audio_ref,
+            "verbatim_sha256": hashlib.sha256(raw.encode()).hexdigest()}
 
     os.makedirs(os.path.join(store, "deposits"), exist_ok=True)
     human = render_human_md(meta, raw, clean)
@@ -610,6 +684,8 @@ def main(argv=None):
     ps.add_argument("store")
     pa = sub.add_parser("agenda")
     pa.add_argument("store")
+    pu = sub.add_parser("audit")
+    pu.add_argument("store")
 
     args = p.parse_args(argv)
     try:
@@ -640,6 +716,14 @@ def main(argv=None):
             print(json.dumps(status(args.store), indent=2))
         elif args.cmd == "agenda":
             print(render_agenda(args.store), end="")
+        elif args.cmd == "audit":
+            findings = audit_store(args.store)
+            if findings:
+                for f in findings:
+                    print(f"FINDING: {f}")
+                return 1
+            n = len(load_twins(args.store))
+            print(f"AUDIT CLEAN: {n} deposit(s) re-verified cold")
     except MoldmakerError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 1
