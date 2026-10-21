@@ -65,29 +65,39 @@ def handle(payload, repo_root, interpretation=None):
     store = route_for(payload, repo_root)
     moldmaker.init_store(store, project=os.path.basename(store.rstrip("/")) or "moldmaker",
                          commit=False)
+    # A retry of an already-filed message short-circuits BEFORE any LLM
+    # call: Telegram/webhook retries must be answered from the record,
+    # not by re-interpreting and hoping the model behaves twice.
+    result = None
+    if payload.get("message_id"):
+        dep_id = moldmaker.deposit_id_for("telegram", str(payload["message_id"]), text)
+        slug = moldmaker.find_existing(store, dep_id)
+        if slug:
+            result = {"deposit_id": dep_id, "slug": slug,
+                      "created": False, "commit": None}
     # Interpret -> validate -> deposit, with a bounded feedback loop:
     # a validation failure is fed back to the interpreter verbatim and
     # retried (max 3 attempts). A fixture interpretation (tests) is
     # never retried — it stands or falls as given.
     feedback = ""
-    result = None
-    for attempt in range(3):
-        interp = interpretation
-        if interp is None:
-            interp = interpreter.interpret(text, provider="vault", feedback=feedback)
-        try:
-            result = moldmaker.deposit(
-                store, text, interp,
-                source="telegram",
-                timestamp=payload.get("timestamp"),
-                external_id=str(payload["message_id"]) if payload.get("message_id") else None,
-                audio_ref=payload.get("audio_ref"),
-            )
-            break
-        except moldmaker.MoldmakerError as e:
-            if interpretation is not None or attempt == 2:
-                raise
-            feedback = str(e)
+    if result is None:
+        for attempt in range(3):
+            interp = interpretation
+            if interp is None:
+                interp = interpreter.interpret(text, provider="vault", feedback=feedback)
+            try:
+                result = moldmaker.deposit(
+                    store, text, interp,
+                    source="telegram",
+                    timestamp=payload.get("timestamp"),
+                    external_id=str(payload["message_id"]) if payload.get("message_id") else None,
+                    audio_ref=payload.get("audio_ref"),
+                )
+                break
+            except moldmaker.MoldmakerError as e:
+                if interpretation is not None or attempt == 2:
+                    raise
+                feedback = str(e)
     assert result is not None
     twins = moldmaker.load_twins(store)
     twin = next(t for t in twins if t["meta"]["deposit_id"] == result["deposit_id"])

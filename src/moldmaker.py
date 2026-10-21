@@ -504,12 +504,17 @@ def deposit(store, raw, interp, source="text", timestamp=None, external_id=None,
     _require(isinstance(raw, str) and raw.strip(), "transmission text is empty")
     scan_secrets(raw)
     timestamp = timestamp or now_iso()
-    clean, _notes = validate_interpretation(raw, interp, approved_ids)
+    # Idempotency is checked BEFORE validation: the deposit id depends
+    # only on (source, external_id/raw), never on the interpretation.
+    # A retry of an already-filed transmission must answer "already
+    # filed" even if a fresh interpretation would fail validation —
+    # otherwise retries are exactly as fragile as first attempts
+    # (sixth live dispatch, 2026-10-15: the 99006 retry died this way).
     dep_id = deposit_id_for(source, external_id, raw)
-
     existing = find_existing(store, dep_id)
     if existing:
         return {"deposit_id": dep_id, "slug": existing, "created": False, "commit": None}
+    clean, _notes = validate_interpretation(raw, interp, approved_ids)
 
     if commit:
         _require(is_git_repo(store), "store is not a git repo (run init first)")

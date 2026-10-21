@@ -84,6 +84,20 @@ class DepositTests(unittest.TestCase):
         self.assertFalse(r2["created"])
         self.assertEqual(commits(self.store), n)
 
+    def test_retry_short_circuits_before_validation(self):
+        # Regression: sixth live dispatch (2026-10-15) — the retry of an
+        # already-filed message re-interpreted it, the fresh interpretation
+        # failed validation, and the retry died even though its deposit
+        # already existed. The deposit id never depends on the
+        # interpretation, so the already-filed check must come first:
+        # a retry carrying a garbage interpretation still answers
+        # "already filed" instead of raising.
+        moldmaker.deposit(self.store, self.raw, self.interp, external_id="msg-1")
+        bad = load_json("bilge.interp.json")
+        bad["intents"][0]["source_quote"] = "something the user never said"
+        r = moldmaker.deposit(self.store, self.raw, bad, external_id="msg-1")
+        self.assertFalse(r["created"])
+
     def test_untraceable_quote_refused_without_commit(self):
         bad = load_json("bilge.interp.json")
         bad["intents"][0]["source_quote"] = "something the user never said"
@@ -254,6 +268,32 @@ class HandlerTests(unittest.TestCase):
                                      repo_root=self.tmp if hasattr(self, "tmp") else "/tmp")
         self.assertFalse(out["ok"])
         self.assertEqual(out["needs"], "transcription")
+
+    def test_handler_retry_never_calls_interpreter(self):
+        # The Telegram face of the same regression: a retry is answered
+        # from the record. If the interpreter is called at all, it
+        # raises — the handler must still return "Already filed".
+        import handle_telegram
+        tmp = tempfile.mkdtemp(prefix="moldmaker-handler-")
+        raw = load("bilge.txt")
+        interp = load_json("bilge.interp.json")
+        payload = {"chat_id": 1, "text": raw, "message_id": 42}
+        out1 = handle_telegram.handle(payload, repo_root=tmp, interpretation=interp)
+        self.assertTrue(out1["ok"])
+        self.assertTrue(out1["created"])
+        orig = handle_telegram.interpreter.interpret
+
+        def boom(*a, **k):
+            raise AssertionError("interpreter called on a retry")
+
+        handle_telegram.interpreter.interpret = boom
+        try:
+            out2 = handle_telegram.handle(payload, repo_root=tmp)
+        finally:
+            handle_telegram.interpreter.interpret = orig
+        self.assertTrue(out2["ok"])
+        self.assertFalse(out2["created"])
+        self.assertIn("Already filed", out2["ack_text"])
 
 
 if __name__ == "__main__":
