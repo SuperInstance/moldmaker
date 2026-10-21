@@ -80,9 +80,10 @@ regression test that reproduces the live failure on the old code.
 - **No native voice notes.** The bridge forwards text only. Voice
   needs: bridge accepts `message.voice` → fetch audio → retain
   audio + reference → STT → payload with transcript + `audio_ref`.
-- **The think cycle is deterministic only.** Agenda/view
-  regeneration is real; the LLM *"what's missing?"* completeness
-  pass (docs/PROCESS.md §4) is designed, not implemented.
+- **The think cycle's LLM pass awaits its first live run.** The
+  completeness pass (`src/think.py`, specs/THINK.md) is built and
+  unit-tested offline; the workflow runs it on manual dispatch with
+  `llm=true`. It has not yet run live against the vault.
 - **Minimal routing.** Chat→project mapping is an env JSON; there
   is no project-selection conversation yet.
 - **No surfaces beyond Telegram + git.** Phone/laptop/TV native

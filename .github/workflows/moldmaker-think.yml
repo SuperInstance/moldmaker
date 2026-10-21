@@ -1,10 +1,14 @@
-# moldmaker-think.yml — the completeness pass (v0: honest subset).
+# moldmaker-think.yml — the think cycle (PROCESS.md §4).
 #
-# Zero's think heartbeat runs a freeform ReAct loop. Moldmaker's v0
-# think cycle is narrower and deterministic: regenerate the meeting
-# agenda + status from the deposits and commit them if they changed.
-# The LLM "what's missing?" pass over the spec set is the next rung
-# (docs/IMPLEMENTATION.md) — it is NOT faked here.
+# Two halves:
+#   1. Deterministic (always): regenerate the spec views + meeting
+#      agenda from the deposits and commit them if they changed.
+#   2. LLM completeness pass (opt-in via the `llm` dispatch input):
+#      src/think.py reads the whole spec set and writes
+#      specs/THINK.md — gaps, contradictions, and proposed questions
+#      for the user, every item traced to the deposits that motivated
+#      it. THINK.md is a generated view of agent inferences, never a
+#      deposit; it is labeled as such in the file itself.
 #
 # Manual dispatch only. To make it a heartbeat, add:
 #   schedule:
@@ -21,9 +25,15 @@ on:
         description: 'Project store subdir (blank = dogfood)'
         required: false
         type: string
+      llm:
+        description: 'Also run the LLM completeness pass (specs/THINK.md)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   think:
@@ -44,6 +54,7 @@ jobs:
           PROJECT: ${{ inputs.project }}
         run: |
           STORE="${PROJECT:-dogfood}"
+          echo "STORE=$STORE" >> "$GITHUB_ENV"
           python3 - <<EOF
           import sys
           sys.path.insert(0, "src")
@@ -55,9 +66,28 @@ jobs:
               f.write(moldmaker.render_agenda(store))
           print(moldmaker.status(store))
           EOF
+
+      - name: Get GitHub OIDC token
+        if: ${{ inputs.llm }}
+        id: oidc
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('superinstance-vault');
+            core.setOutput('token', token);
+
+      - name: LLM completeness pass
+        if: ${{ inputs.llm }}
+        env:
+          OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
+        run: |
+          python3 src/think.py "$STORE" --provider vault
+
+      - name: Commit the think cycle
+        run: |
           git config user.name "moldmaker"
           git config user.email "moldmaker@local"
           git add -A
           git diff --staged --quiet || git commit -m "think: agenda + views regenerated" \
-            -m "Commentary: deterministic v0 think pass. No LLM completeness pass yet — see docs/IMPLEMENTATION.md."
-          git push || true
+            -m "Commentary: think cycle over $STORE. Deterministic regeneration always; the LLM completeness pass (specs/THINK.md — agent inferences traced to deposits, never deposits) ran only if dispatched with llm=true."
+          git push

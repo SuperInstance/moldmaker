@@ -50,10 +50,24 @@ demarcation is preserved on purpose (docs/PHILOSOPHY.md, II and V).
   validate/deposit (max 3 attempts with feedback) → acknowledgement
   text (filed title, counts, first open question). A voice payload
   with no transcript returns `needs: transcription` and files nothing.
+- **`src/think.py`** — the completeness pass (docs/PROCESS.md §4).
+  Reads the whole spec set (every deposit's intents, actions, open
+  questions, commentary) and asks the LLM one question: *what's
+  missing?* Output is a generated view, `specs/THINK.md`: gaps the
+  fleet should settle itself, contradictions to surface, and proposed
+  questions for the user — survivors only, budget 7, every item traced
+  to the deposits that motivated it (unknown deposit ids are refused
+  mechanically). THINK.md is labeled agent inference; it never enters
+  OPEN-QUESTIONS.md as user-derived. An empty result is reported as
+  question exhaustion, not treated as an error. Providers match the
+  interpreter (vault or OpenAI-compatible); the LLM call is injected,
+  so the tests run offline.
 - **`.github/workflows/`** — `moldmaker-telegram.yml`
   (repository_dispatch → deposit → push → bridge reply) and
-  `moldmaker-think.yml` (manual-dispatch agenda/views regeneration).
-- **`tests/` + `demo.py`** — 18 acceptance tests and a no-network
+  `moldmaker-think.yml` (manual dispatch: deterministic agenda/views
+  regeneration always; the LLM completeness pass when dispatched
+  with `llm=true`).
+- **`tests/` + `demo.py`** — 26 acceptance tests and a no-network
   end-to-end demo (two deposits, the second a correction; a retry
   that must not duplicate).
 
@@ -92,10 +106,11 @@ orchestrates and verifies; the fleet carries bulk):
   Voice needs: bridge accepts `message.voice` → fetch audio → retain
   audio + reference → STT → payload with transcript + audio_ref.
   Dictated text works through the existing route now.
-- **The think cycle is deterministic only.** Agenda/views
-  regeneration is real; the LLM *"what's missing?"* completeness
-  pass over the spec set is designed (docs/PROCESS.md §4) but not
-  yet implemented. Nothing here pretends otherwise.
+- **The think cycle's LLM pass is new and not yet run live.** The
+  completeness pass (`src/think.py`) is built and unit-tested
+  (offline, injected LLM), and the workflow can run it on dispatch;
+  its first live run against the vault has not happened yet, and it
+  is manual-dispatch only — no heartbeat schedule.
 - **One store per route, minimal routing.** Chat→project mapping is
   an env JSON; there is no project-selection conversation yet.
 - **No surfaces.** Phone/laptop/TV renderings (docs/SURFACES.md) are
