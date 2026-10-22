@@ -3,9 +3,7 @@
 _Agent-generated inferences from the completeness pass (PROCESS.md §4). These are NOT user statements and NOT deposits; they never enter OPEN-QUESTIONS.md as if user-derived. The meeting agenda decides what gets asked. Every item traces to the deposits that motivated it. Spec set considered: 1 deposit(s)._
 
 ## Proposed questions for the user (survivors only)
-- [high] Which platform should the checklist app be developed for? — why: The platform choice will affect the development approach and user accessibility. (from deposit(s): 91e6b4ef86f55210)
-- [normal] How should the fuel dock reminder be delivered to the user? — why: The reminder mechanism impacts the user experience and technical implementation. (from deposit(s): 91e6b4ef86f55210)
-- [low] Should the checklist items be customizable by the user? — why: Customization would add flexibility and accommodate potential future use cases. (from deposit(s): 91e6b4ef86f55210)
+- (none — question exhaustion for now)
 
 ## Gaps the fleet should settle itself
 
@@ -16,3 +14,5 @@ _Agent-generated inferences from the completeness pass (PROCESS.md §4). These a
 ## Contradictions to surface
 
 - (none found)
+
+_Filtered/cut by the discipline: previously_proposed −3._
